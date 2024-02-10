@@ -53,6 +53,11 @@ contract Raffle is VRFConsumerBaseV2 {
     error Raffle__NotEnoughEthSent();
     error Raffle__TransfertFailed();
     error Raffle__NotOpen();
+    error Raffle__UpKeepNotNeeded(
+        uint256 balance,
+        uint256 players,
+        uint256 state
+    );
 
     /** Type declarations */
     enum RaffleState {
@@ -120,17 +125,48 @@ contract Raffle is VRFConsumerBaseV2 {
         emit EnteredRaffle(msg.sender);
     }
 
+    // When the winner supposed to be picked ?
+    /**
+     * @dev funciton called by Chainlink Automation Nodes to check if it's time to perform the upkeep
+     * To perform an upkeep should be true :
+     * - time have passed betwen raffles
+     * - the raffle state is OPEN
+     * - the contract has ETH (i.e. players)
+     * - the subscruptuin is funded with LINK
+     */
+    function checkUpkeep(
+        bytes memory /* checkData */
+    ) public view returns (bool upkeepNeeded, bytes memory /* performData */) {
+        bool timeHasPassed = (block.timestamp - s_lastTimeStamp >= i_interval);
+        bool isOpen = s_raffleState == RaffleState.OPEN;
+        bool hasBalance = address(this).balance > 0;
+        bool hasPlayers = s_players.length > 0;
+        upkeepNeeded = timeHasPassed && isOpen && hasBalance && hasPlayers;
+        return (upkeepNeeded, "0x0");
+        // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
+    }
+
     // 1. Get a randomn number
     // 2. Use the random number to pick a winner
     // 3. Be automatically called
-    function pickWinner() public {
+    // function pickWinner() public {
+    function performUpkeep(bytes calldata /* performData */) external {
+        (bool upkeepNeeded, ) = checkUpkeep("");
+        if (!upkeepNeeded) {
+            revert Raffle__UpKeepNotNeeded(
+                address(this).balance,
+                s_players.length,
+                uint256(s_raffleState)
+            );
+        }
         // check if enough time has passed
         if (block.timestamp - s_lastTimeStamp < i_interval) {
             revert(); //Raffle__NotEnoughTimePassed();
         }
         s_raffleState = RaffleState.CALCULATING;
         // (from Chainlink doc) Will revert if subscription is not set and funded.
-        uint256 requestId = i_vrfCoordinator.requestRandomWords(
+        // uint256 requestId = i_vrfCoordinator.requestRandomWords(
+        i_vrfCoordinator.requestRandomWords(
             i_gasLane, // gas lane
             i_subscriptionId,
             REQUEST_CONFIRMATIONS,
@@ -140,7 +176,7 @@ contract Raffle is VRFConsumerBaseV2 {
     }
 
     function fulfillRandomWords(
-        uint256 requestId,
+        uint256 /* requestId */,
         uint256[] memory randomWords
     ) internal override {
         //     // pick a winner
