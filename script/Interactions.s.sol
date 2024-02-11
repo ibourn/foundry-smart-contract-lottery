@@ -13,7 +13,7 @@ contract CreateSubscription is Script {
     function createSubscription(
         address vrfCoordinator
     ) public returns (uint64) {
-        console.log("Creating subscription on CahinId: ", block.chainid);
+        console.log("Creating subscription on ChainId: ", block.chainid);
 
         vm.startBroadcast();
         uint64 subId = VRFCoordinatorV2Mock(vrfCoordinator)
@@ -21,7 +21,7 @@ contract CreateSubscription is Script {
         vm.stopBroadcast();
 
         console.log(
-            "Subscription Id created: %s\n->Please update subscriptionId in HelperConfig.s.sol",
+            "Subscription Id created: %s\n! -> Please update subscriptionId in HelperConfig.s.sol",
             subId
         );
         return subId;
@@ -54,14 +54,11 @@ contract FundSubscription is Script {
             block.chainid
         );
 
-        // vm.startBroadcast();
-        // LinkToken(link).transferAndCall(
-        //     vrfCoordinator,
-        //     FUND_AMOUNT,
-        //     abi.encode(subId)
-        // );
-
         if (block.chainid == 31337) {
+            /**
+             * local network
+             * in the mock version we use the function fundSubscription
+             */
             vm.startBroadcast();
             VRFCoordinatorV2Mock(vrfCoordinator).fundSubscription(
                 subId,
@@ -69,6 +66,11 @@ contract FundSubscription is Script {
             );
             vm.stopBroadcast();
         } else {
+            /**
+             * on mainnet or testnet
+             * link.transferAndCall calls onTokenTransfer if the recipient is a contract
+             * in this function the funding is made
+             */
             vm.startBroadcast();
             LinkToken(link).transferAndCall(
                 vrfCoordinator,

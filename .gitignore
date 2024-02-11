@@ -6,9 +6,16 @@ out/
 !/broadcast
 /broadcast/*/31337/
 /broadcast/**/dry-run/
+broadcast/
+
+# Ignores dependencies
+lib/
 
 # Docs
 docs/
 
 # Dotenv file
 .env
+
+# Coverage
+coverage.txt

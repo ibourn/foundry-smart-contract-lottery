@@ -52,6 +52,7 @@ contract DeployRaffle is Script {
             callbackGasLimit
         );
         vm.stopBroadcast();
+        console.log("DeployRaffle / Deployed Raffle: %s", address(raffle));
 
         console.log("DeployRaffle / Adding consumer");
         AddConsumer addConsumer = new AddConsumer();
