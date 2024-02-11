@@ -6,4 +6,12 @@ remappings = ["@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/"
 "@solmate=lib/solmate/src/"]
 fs_permissions = [{ access = "read", path = "./broadcast" }]
 
+[etherscan]
+sepolia = { key = "${ETHERSCAN_API_KEY}"}
+# mainnet = { key = "${ETHERSCAN_API_KEY}" }
+
+
+[rpc_endpoints]
+sepolia = "${SEPOLIA_RPC_URL}"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

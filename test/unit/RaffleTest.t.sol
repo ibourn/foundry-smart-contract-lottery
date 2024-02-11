@@ -236,6 +236,8 @@ contract RaffleTest is Test {
 
     /** fulfillRandomWords */
 
+    // should compute params of the functions of the real VRFCoordinatorV2
+    // to test the fulfillRandomWords on forked chain
     modifier skipFork() {
         if (block.chainid != 31337) {
             return;
@@ -309,9 +311,4 @@ contract RaffleTest is Test {
                 (STARTING_USER_BALANCE + prize - entranceFee)
         );
     }
-
-    // test Sepolia forked
-    // 1. if we have a subscription ID we use it in the HelperConfig
-    // => in addConsumer we use the wrong key cause it's anvil default key
-    // but in forked it's a real faked chain with the real key used
 }
