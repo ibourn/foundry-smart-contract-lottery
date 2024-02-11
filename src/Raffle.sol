@@ -1,4 +1,4 @@
-// SPDX-license-identifier: MIT
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.18;
 
@@ -52,7 +52,7 @@ contract Raffle is VRFConsumerBaseV2 {
     /** Errors */
     error Raffle__NotEnoughEthSent();
     error Raffle__TransfertFailed();
-    error Raffle__NotOpen();
+    error Raffle__RaffleNotOpen();
     error Raffle__UpKeepNotNeeded(
         uint256 balance,
         uint256 players,
@@ -118,7 +118,7 @@ contract Raffle is VRFConsumerBaseV2 {
             revert Raffle__NotEnoughEthSent();
         }
         if (s_raffleState != RaffleState.OPEN) {
-            revert Raffle__NotOpen();
+            revert Raffle__RaffleNotOpen();
         }
 
         s_players.push(payable(msg.sender));
@@ -215,5 +215,13 @@ contract Raffle is VRFConsumerBaseV2 {
 
     function getEntranceFee() external view returns (uint256) {
         return i_entranceFee;
+    }
+
+    function getRaffleState() external view returns (RaffleState) {
+        return s_raffleState;
+    }
+
+    function getPlayer(uint256 index) external view returns (address) {
+        return s_players[index];
     }
 }
