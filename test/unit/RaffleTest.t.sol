@@ -7,6 +7,7 @@ import {Raffle} from "../../src/Raffle.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
+import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 
 contract RaffleTest is Test {
     /** State variables */
@@ -20,6 +21,7 @@ contract RaffleTest is Test {
     uint64 subscriptionId;
     uint32 callbackGasLimit;
     address link;
+    uint256 deployerKey;
 
     address public PLAYER = makeAddr("PLAYER");
     uint256 public constant STARTING_USER_BALANCE = 10 ether;
@@ -29,11 +31,15 @@ contract RaffleTest is Test {
 
     function setUp() public {
         // create an instance of the deployer script
+        console.log("RaffleTest / setUp : creating deployer instance");
         DeployRaffle deployRaffle = new DeployRaffle();
 
+        console.log("RaffleTest / setUp : running the deployer");
         // run the deployer script
         (raffle, helperConfig) = deployRaffle.run();
-
+        console.log("RaffleTest / setUp : getting network config");
+        // ! stack to deep issue ! => remove the deployerKey
+        // if needed, we can use the helperConfig to get the deployerKey in a sceond time
         (
             entranceFee,
             interval,
@@ -41,9 +47,12 @@ contract RaffleTest is Test {
             gasLane,
             subscriptionId,
             callbackGasLimit,
-            link
+            link,
+
         ) = helperConfig.activeNetworkConfig();
 
+        // (, , , , , , , deployerKey) = helperConfig.activeNetworkConfig();
+        console.log("RaffleTest / setUp : dealing to player");
         vm.deal(PLAYER, STARTING_USER_BALANCE);
     }
 
@@ -224,4 +233,85 @@ contract RaffleTest is Test {
         assert(uint256(raffleState) == 1); // 1 is calculating
         assert(uint256(requestId) > 0);
     }
+
+    /** fulfillRandomWords */
+
+    modifier skipFork() {
+        if (block.chainid != 31337) {
+            return;
+        }
+        _;
+    }
+
+    // params in test allows fuzzing
+    // skipFork : test not running on forked chain to avoid revert
+    function test_FulfillRandomWordsCanOnlyBeCalled_AfterPerformUpkeep(
+        uint256 randomRequestId
+    ) public skipFork {
+        // Arrange
+        // revert msg from Mock:fulfillRandomWordsWithOverride : "nonexistent request"
+        // real contract:fulfillRandomWords : different params => do skipFork
+        vm.expectRevert("nonexistent request");
+        // only on local test
+        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
+            randomRequestId,
+            address(raffle)
+        );
+    }
+
+    function test_FulfillRandomWordsPicksAWinnerResetsAndSendsMoney()
+        public
+        raffeleEnteredAndTimePassed
+        skipFork
+    {
+        // Arrange
+        uint256 additionalEntrants = 5;
+        uint256 startingIndex = 1;
+        for (
+            uint256 i = startingIndex;
+            i < startingIndex + additionalEntrants;
+            i++
+        ) {
+            address player = address(uint160(i));
+            hoax(player, STARTING_USER_BALANCE);
+            raffle.enterRaffle{value: entranceFee}();
+        }
+        uint256 previousTimeStamp = raffle.getLastTimeStamp();
+        uint256 prize = entranceFee * (additionalEntrants + 1); // +1 for the first player
+
+        // Act
+        vm.recordLogs();
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[1];
+
+        // pretend to be the chainlink vrf to get random number to pick a winner
+        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
+            uint256(requestId),
+            address(raffle)
+        );
+
+        // Assert
+        // Not good practice to have many asserts in a single test
+        assert(uint256(raffle.getRaffleState()) == 0); // 0 is open
+        assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);
+        assert(raffle.getPlayersLength() == 0);
+        assert(raffle.getRecentWinner() != address(0));
+        assert(raffle.getLastTimeStamp() > previousTimeStamp);
+        console.log("Winner: %s", raffle.getRecentWinner());
+        console.log("Winner balance: %s", raffle.getRecentWinner().balance);
+        console.log(
+            "Prize + STARTING_USER_BALANCE - entranceFee: %s",
+            prize + STARTING_USER_BALANCE - entranceFee
+        );
+        assert(
+            raffle.getRecentWinner().balance ==
+                (STARTING_USER_BALANCE + prize - entranceFee)
+        );
+    }
+
+    // test Sepolia forked
+    // 1. if we have a subscription ID we use it in the HelperConfig
+    // => in addConsumer we use the wrong key cause it's anvil default key
+    // but in forked it's a real faked chain with the real key used
 }
