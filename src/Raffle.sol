@@ -91,6 +91,7 @@ contract Raffle is VRFConsumerBaseV2 {
     /** Events */
     event EnteredRaffle(address indexed player);
     event PickedWinner(address indexed winner);
+    event RequestedRaffleWinner(uint256 indexed requestId);
 
     /// @dev renamed keyHash to gasLane
     constructor(
@@ -164,15 +165,19 @@ contract Raffle is VRFConsumerBaseV2 {
             revert(); //Raffle__NotEnoughTimePassed();
         }
         s_raffleState = RaffleState.CALCULATING;
+
         // (from Chainlink doc) Will revert if subscription is not set and funded.
         // uint256 requestId = i_vrfCoordinator.requestRandomWords(
-        i_vrfCoordinator.requestRandomWords(
+        uint256 requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane, // gas lane
             i_subscriptionId,
             REQUEST_CONFIRMATIONS,
             i_callbackGasLimit,
             NUM_WORDS
         );
+        // redundant cause already in VRFCoordinatorV2Mock
+        // allow to test using ouput of an event
+        emit RequestedRaffleWinner(requestId);
     }
 
     function fulfillRandomWords(

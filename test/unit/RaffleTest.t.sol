@@ -6,6 +6,7 @@ import {DeployRaffle} from "../../script/DeployRaffle.s.sol";
 import {Raffle} from "../../src/Raffle.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {Test, console} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 contract RaffleTest is Test {
     /** State variables */
@@ -187,5 +188,40 @@ contract RaffleTest is Test {
             )
         );
         raffle.performUpkeep("");
+    }
+
+    modifier raffeleEnteredAndTimePassed() {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        _;
+    }
+    // Testing using the output of an event. (EVM can't read events, but tests can)
+    // Important to test events cause Chainlink nodes listen to them
+    function test_PerformUpkeepUpdatesRaffleState_AndEmitRequestId()
+        public
+        raffeleEnteredAndTimePassed
+    {
+        // Arrange -> modifier
+        // Act
+        vm.recordLogs();
+        raffle.performUpkeep("");
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        // Assert
+        // Method to get the desired log :
+        // We know first event emitted : by VRFCoordiantorV2Mock
+        // and second event emitted : by Raffle
+        bytes32 requestId = entries[1].topics[1];
+        // topics[0] refers to the entire event
+        // topics[1] refers to the first indexed parameter
+
+        Raffle.RaffleState raffleState = raffle.getRaffleState();
+
+        assert(uint256(raffleState) == 1); // 1 is calculating
+        assert(uint256(requestId) > 0);
     }
 }
