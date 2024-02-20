@@ -39,11 +39,10 @@ ifeq ($(findstring --network sepolia,$(ARGS)),--network sepolia)
 	NETWORK_ARGS := --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
 endif
 
-# @forge script script/DeployRaffle.s.sol:DeployRaffle $(NETWORK_ARGS)
-# this cause an error with etherscan verification
 deploy:
 	forge script script/DeployRaffle.s.sol:DeployRaffle $(NETWORK_ARGS)
 
+# remove @ from lines below to print the commands (@ is )
 createSubscription:
 	@forge script script/Interactions.s.sol:CreateSubscription $(NETWORK_ARGS)
 

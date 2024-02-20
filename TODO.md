@@ -24,4 +24,6 @@ This code is to create a proveably random smart contract lottery
 
 #### infos
 
-sepolia deployment add (Raffle.sol) : 0xD582714f8baa6304f2c81597269AcFB3B396b26A
+~~sepolia deployment add (Raffle.sol) : 0xD582714f8baa6304f2c81597269AcFB3B396b26A~~
+Raffle deployed on sepolia : 0xCce385DcdD6c9ce16827cBC94a3bd8c0982a2D8d
+upkeep : 80069385047514437119098851493706281179579006106039620986720070128060228298507

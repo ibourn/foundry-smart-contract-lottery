@@ -25,12 +25,7 @@ pragma solidity ^0.8.18;
 
 /**
  * chainlink infos => https://docs.chain.link/vrf/v2/subscription/supported-networks
- *
  * Mainnet
- *
- *
- *
- *
  *
  * Sepolia
  * LINK Token => 0x779877A7B0D9E8603169DdbD7836e478b4624789
@@ -41,6 +36,7 @@ pragma solidity ^0.8.18;
 
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
 
 /**
  * @title A sample Raffle contract
@@ -48,7 +44,7 @@ import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2
  * @notice This is a simple Raffle contract
  * @dev implements Chainlink VRFv2
  */
-contract Raffle is VRFConsumerBaseV2 {
+contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
     /** Errors */
     error Raffle__NotEnoughEthSent();
     error Raffle__TransfertFailed();
@@ -83,8 +79,8 @@ contract Raffle is VRFConsumerBaseV2 {
     // @dev Chainlink VRF callbackGasLimit
     uint32 private immutable i_callbackGasLimit;
 
-    address payable[] private s_players;
     uint256 private s_lastTimeStamp;
+    address payable[] private s_players;
     address private s_recentWinner;
     RaffleState private s_raffleState;
 
@@ -92,6 +88,10 @@ contract Raffle is VRFConsumerBaseV2 {
     event EnteredRaffle(address indexed player);
     event PickedWinner(address indexed winner);
     event RequestedRaffleWinner(uint256 indexed requestId);
+
+    /****************************************************************************
+     * Functions
+     ****************************************************************************/
 
     /// @dev renamed keyHash to gasLane
     constructor(
@@ -113,6 +113,10 @@ contract Raffle is VRFConsumerBaseV2 {
         s_raffleState = RaffleState.OPEN;
     }
 
+    /**
+     * @dev Enter the raffle
+     * @dev only if the raffle is open and the entrance fee is paid
+     */
     function enterRaffle() external payable {
         // require(msg.value >= i_entranceFee, "Not enough ETH sent");
         if (msg.value < i_entranceFee) {
@@ -126,7 +130,9 @@ contract Raffle is VRFConsumerBaseV2 {
         emit EnteredRaffle(msg.sender);
     }
 
-    // When the winner supposed to be picked ?
+    /****************************************************************************
+     * Chainlink interactions
+     ****************************************************************************/
     /**
      * @dev funciton called by Chainlink Automation Nodes to check if it's time to perform the upkeep
      * To perform an upkeep should be true :
@@ -147,10 +153,11 @@ contract Raffle is VRFConsumerBaseV2 {
         // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
     }
 
-    // 1. Get a randomn number
-    // 2. Use the random number to pick a winner
-    // 3. Be automatically called
-    // function pickWinner() public {
+    /**
+     * @dev function called by Chainlink Automation Nodes to perform the upkeep
+     * The upkeep is to request a random number from Chainlink VRF
+     * param performData is not used here
+     */
     function performUpkeep(bytes calldata /* performData */) external {
         (bool upkeepNeeded, ) = checkUpkeep("");
         if (!upkeepNeeded) {
@@ -166,8 +173,7 @@ contract Raffle is VRFConsumerBaseV2 {
         }
         s_raffleState = RaffleState.CALCULATING;
 
-        // (from Chainlink doc) Will revert if subscription is not set and funded.
-        // uint256 requestId = i_vrfCoordinator.requestRandomWords(
+        // Will revert if subscription is not set and funded.
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane, // gas lane
             i_subscriptionId,
@@ -176,23 +182,23 @@ contract Raffle is VRFConsumerBaseV2 {
             NUM_WORDS
         );
         // redundant cause already in VRFCoordinatorV2Mock
-        // allow to test using ouput of an event
+        // used to test with the ouput of an event
         emit RequestedRaffleWinner(requestId);
     }
 
+    /**
+     * @dev Callback function used by Chainlink VRF
+     * @dev to get the random number and pick a winner
+     * @dev it transfers the prize to the winner
+     * @dev it resets the raffle
+     * param requestId the Chainlink VRF request id
+     * @param randomWords the random number (at index 0)
+     */
     function fulfillRandomWords(
         uint256 /* requestId */,
         uint256[] memory randomWords
     ) internal override {
-        //     // pick a winner
-        //     uint256 winnerIndex = randomWords[0] % s_players.length;
-        //     s_players[winnerIndex].transfer(address(this).balance);
-        //     // reset the players array
-        //     delete s_players;
-        //     s_lastTimeStamp = block.timestamp;
-
         // CEI => Checks-Effects-Interactions
-
         // checks first => revert quicker = cheaper
 
         // effects => we change the state of the contract
@@ -215,29 +221,44 @@ contract Raffle is VRFConsumerBaseV2 {
     /****************************************************************************
      * Getter functions
      ****************************************************************************/
-
-    /** Getter funcitons */
-
+    /**
+     * @dev Get the entrance fee
+     */
     function getEntranceFee() external view returns (uint256) {
         return i_entranceFee;
     }
 
+    /**
+     * @dev Get the raffle state
+     */
     function getRaffleState() external view returns (RaffleState) {
         return s_raffleState;
     }
 
+    /**
+     * @dev Get the player address at index
+     */
     function getPlayer(uint256 index) external view returns (address) {
         return s_players[index];
     }
 
+    /**
+     * @dev Get the last winner
+     */
     function getRecentWinner() external view returns (address) {
         return s_recentWinner;
     }
 
+    /**
+     * @dev Get the length of the players array
+     */
     function getPlayersLength() external view returns (uint256) {
         return s_players.length;
     }
 
+    /**
+     * @dev Get the last timestamp
+     */
     function getLastTimeStamp() external view returns (uint256) {
         return s_lastTimeStamp;
     }
