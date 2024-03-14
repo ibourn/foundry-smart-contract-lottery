@@ -6,10 +6,15 @@ This is a section of the [Cyfrin Foundry Solidity Course](https://updraft.cyfri
 _[⭐️ (3:04:09) | Lesson 9: Foundry Smart Contract Lottery](https://www.youtube.com/watch?v=sas02qSFZ74&t=11049s)_
 
 <br>
+This is a raffle project where we use two chainlink services for the draw:
 
-Address of raffle contract deployed on sepolia : 0xCce385DcdD6c9ce16827cBC94a3bd8c0982a2D8d
+- Chanilink VRF: to obtain a random number.
+- Chainlink Automation: to automate the previous task and designate a winner.
 
-with vfr & upkeep id: 9316 / 80069385047514437119098851493706281179579006106039620986720070128060228298507
+<br>
+Address of the raffle contract deployed on sepolia : 0xCce385DcdD6c9ce16827cBC94a3bd8c0982a2D8d
+
+vfr & upkeep id: 9316 / 80069385047514437119098851493706281179579006106039620986720070128060228298507
 
 <br>
 
